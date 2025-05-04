@@ -1,0 +1,7 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "proyectoPistero:lib"
+
+    - path: "./test"
+      component: "proyectoPistero:test:proyectoPistero-test"
