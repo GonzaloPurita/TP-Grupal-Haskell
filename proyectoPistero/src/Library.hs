@@ -27,37 +27,58 @@ peugeot = UnAuto "Peugeot" "504" 0 0 40 0 ["El Rey Del Desierto"]
 
 -- 2)a)
 estaEnBuenEstado :: Auto -> Bool
-estaEnBuenEstado (UnAuto "Peugeot" _ _ _ _ _ _) = False
+--estaEnBuenEstado (UnAuto "Peugeot" _ _ _ _ _ _) = False
+estaEnBuenEstado UnAuto{marca = "Peugeot"} = False
 estaEnBuenEstado auto
---                | marca auto == "Peugeot" = False
                 | tiempoDeCarrera auto < 100 = desgasteChasis auto < 20
                 | otherwise = desgasteChasis auto < 40 && desgasteRuedas auto < 60
 
 -- 2)b)
 noDaMas :: Auto -> Bool
-noDaMas auto = ((("La " ==) . take 3 . head . apodos) auto && desgasteChasis auto > 80) || desgasteRuedas auto > 80
+noDaMas auto = (primerApodoEmpiezaConLa auto && desgasteChasis auto > 80) || desgasteRuedas auto > 80
+
+primerApodoEmpiezaConLa :: Auto -> Bool
+primerApodoEmpiezaConLa = ("La " ==) . take 3 . primerApodo
+
+primerApodo :: Auto -> String
+primerApodo = head . apodos
 
 -- 2)c)
 esUnChiche :: Auto -> Bool
 esUnChiche auto
-            | (even . length . apodos) auto = desgasteChasis auto < 20
-            | otherwise = desgasteChasis auto < 50
+            | tieneApodosPares auto = desgasteChasis auto < 20
+            | not (tieneApodosPares auto) = desgasteChasis auto < 50
+
+tieneApodosPares :: Auto -> Bool
+tieneApodosPares = even . cantApodos
+
+cantApodos :: Auto -> Number
+cantApodos = length . apodos
 
 -- 2)d)
 esUnaJoya :: Auto -> Bool
-esUnaJoya auto = desgasteChasis auto == 0 && desgasteRuedas auto == 0 && ((<= 1) . length . apodos) auto 
+esUnaJoya auto = (not . tieneDesgaste) auto && (not . tieneApodos) auto
+
+tieneDesgaste :: Auto -> Bool
+tieneDesgaste UnAuto{desgasteChasis = 0, desgasteRuedas = 0} = False
+tieneDesgaste UnAuto{desgasteChasis = _, desgasteRuedas = _} = True
+
+tieneApodos :: Auto -> Bool
+tieneApodos UnAuto{apodos = []} = False
+tieneApodos UnAuto{apodos = [_]} = False
+tieneApodos UnAuto{apodos = _} = True
 
 -- 2)e)
 nivelDeChetez :: Auto -> Number
-nivelDeChetez auto = 20 * (length . apodos) auto * (length . modelo) auto
+nivelDeChetez auto = 20 * cantApodos auto * (length . modelo) auto
 
 -- 2)f)
 capacidadSupercalifragilisticaespialidosa :: Auto -> Number
-capacidadSupercalifragilisticaespialidosa = length . head . apodos
+capacidadSupercalifragilisticaespialidosa = length . primerApodo
 
 -- 2)g)
 nivelDeRiesgo :: Auto -> Number
-nivelDeRiesgo auto 
+nivelDeRiesgo auto
             | estaEnBuenEstado auto = calculoRiesgo auto
             | otherwise = 2 * calculoRiesgo auto
 
@@ -69,23 +90,24 @@ repararUnAuto :: Auto -> Auto
 repararUnAuto auto = auto{desgasteChasis = desgasteChasis auto * 0.15, desgasteRuedas = 0}
 
 -- 3)b)
-aplicarPenalidad :: Auto -> Number -> Auto
-aplicarPenalidad auto segundos = auto{tiempoDeCarrera = tiempoDeCarrera auto + segundos}
+aplicarPenalidad :: Number -> Auto -> Auto
+aplicarPenalidad segundos auto = auto{tiempoDeCarrera = tiempoDeCarrera auto + segundos}
 
 -- 3)c)
 ponerleNitro :: Auto -> Auto
 ponerleNitro auto = auto{velocidadMax = velocidadMax auto + velocidadMax auto * 0.2}
 
 -- 3)d)
-bautizarAuto :: Auto -> String -> Auto
-bautizarAuto auto nuevoApodo = auto{apodos = apodos auto ++ [nuevoApodo]}
+bautizarAuto :: String -> Auto -> Auto
+bautizarAuto nuevoApodo auto = auto{apodos = apodos auto ++ [nuevoApodo]}
 
 -- 3)e)
 desarmarAuto :: Auto -> String -> String -> Auto
-desarmarAuto auto nuevaMarca nuevoModelo = (perderApodos auto){marca = nuevaMarca, modelo = nuevoModelo, apodos = apodos auto ++ ["Nunca taxi"]}
+desarmarAuto auto nuevaMarca nuevoModelo = auto{marca = nuevaMarca, modelo = nuevoModelo, apodos = ["Nunca taxi"]}
 
-perderApodos :: Auto -> Auto
-perderApodos auto = auto{apodos = []}
+-- (perderApodos auto){marca = nuevaMarca, modelo = nuevoModelo, apodos = apodos auto ++ ["Nunca taxi"]}
+-- perderApodos :: Auto -> Auto
+-- perderApodos auto = auto{apodos = []}
 
 -- 4)
 
@@ -95,7 +117,6 @@ data Pista = UnaPista{
     precioBase :: Number,
     tramos :: [Tramo]
 }deriving(Show, Eq)
-
 
 data Tramo =
             Curva{angulo :: Number, longitud :: Number}
@@ -112,8 +133,12 @@ curvaPeligrosa = Curva 60 300
 curvaTranca :: Tramo
 curvaTranca = Curva 110 550
 
-atravesarCurva :: Auto -> Tramo -> Auto
-atravesarCurva auto (Curva angulo longitud) = auto{desgasteRuedas = desgasteRuedas auto + (3 * longitud / angulo), tiempoDeCarrera = tiempoDeCarrera auto + (longitud / (velocidadMax auto / 2))}
+atravesarCurva :: Tramo -> Auto -> Auto
+atravesarCurva (Curva angulo longitud) auto = 
+    auto{
+        desgasteRuedas = desgasteRuedas auto + (3 * longitud / angulo), 
+        tiempoDeCarrera = tiempoDeCarrera auto + (longitud / (velocidadMax auto / 2))
+    }
 
 
 -- RECTA --
@@ -124,8 +149,12 @@ tramoRectoClassic = Recta 715
 tramito :: Tramo
 tramito = Recta 260
 
-atravesarRecta :: Auto -> Tramo -> Auto
-atravesarRecta auto (Recta longitud) = auto{desgasteChasis = desgasteChasis auto + 0.1 * longitud, tiempoDeCarrera = tiempoDeCarrera auto + longitud / velocidadMax auto}
+atravesarRecta :: Tramo -> Auto -> Auto
+atravesarRecta (Recta longitud) auto = 
+    auto{
+        desgasteChasis = desgasteChasis auto + 0.1 * longitud, 
+        tiempoDeCarrera = tiempoDeCarrera auto + longitud / velocidadMax auto
+    }
 
 
 -- ZIGZAG --
@@ -136,8 +165,13 @@ zigZagLoco = Zigzag 5
 casiCurva :: Tramo
 casiCurva = Zigzag 1
 
-atravesarZigzag :: Auto -> Tramo -> Auto
-atravesarZigzag auto (Zigzag cambiosDeDireccion) = auto{tiempoDeCarrera = tiempoDeCarrera auto + cambiosDeDireccion * 3, desgasteChasis = desgasteChasis auto + 5, desgasteRuedas = desgasteRuedas auto + velocidadMax auto * cambiosDeDireccion / 100}
+atravesarZigzag :: Tramo -> Auto -> Auto
+atravesarZigzag (Zigzag cambiosDeDireccion) auto = 
+    auto{
+        tiempoDeCarrera = tiempoDeCarrera auto + cambiosDeDireccion * 3, 
+        desgasteChasis = desgasteChasis auto + 5, 
+        desgasteRuedas = desgasteRuedas auto + velocidadMax auto * cambiosDeDireccion / 100
+    }
 
 -- RULO EN EL AIRE --
 
@@ -147,8 +181,12 @@ ruloClasico = Rulo 13
 deseoDeMuerte :: Tramo
 deseoDeMuerte = Rulo 26
 
-atravesarRulo :: Auto -> Tramo -> Auto
-atravesarRulo auto (Rulo diametro) = auto{desgasteRuedas = desgasteRuedas auto + diametro * 1.5, tiempoDeCarrera = tiempoDeCarrera auto + 5 * diametro / velocidadMax auto}
+atravesarRulo :: Tramo -> Auto -> Auto
+atravesarRulo (Rulo diametro) auto = 
+    auto{
+        desgasteRuedas = desgasteRuedas auto + diametro * 1.5, 
+        tiempoDeCarrera = tiempoDeCarrera auto + 5 * diametro / velocidadMax auto
+    }
 
 
 -- 5)a)
